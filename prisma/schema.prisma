@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -16,20 +16,63 @@ model User {
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  todos     Todo[]
+  tasks     Task[]
 
   @@map("users")
 }
 
-model Todo {
+model Task {
   id          String   @id @default(cuid())
   title       String
-  description String?
+  description String?  // Notas, links, telefones
   completed   Boolean  @default(false)
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Configurações de Alarme
+  alarmTime   DateTime?  // Hora do alarme (data + hora)
+  iconId      String?     // Identificador do ícone (alarm, task, reminder, settings)
+  isRecurring Boolean    @default(false)
+  recurrence  String?    // DAILY, WEEKLY, MONTHLY, YEARLY, CUSTOM
+  
+  // Relacionamentos
+  subtasks    Subtask[]
+  alerts      Alert[]
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([userId, alarmTime])
+  @@index([userId, completed])
+  @@map("tasks")
+}
 
-  @@map("todos")
+model Subtask {
+  id          String   @id @default(cuid())
+  title       String
+  completed   Boolean  @default(false)
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  order       Int      @default(0) // Ordem de exibição
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([taskId])
+  @@map("subtasks")
+}
+
+model Alert {
+  id            String   @id @default(cuid())
+  taskId        String
+  task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  type          String   @default("NOTIFICATION") // NOTIFICATION, NUDGE, SOUND, VIBRATION
+  minutesBefore Int      @default(0) // Minutos antes do alarme
+  isActive      Boolean  @default(true)
+  order         Int      @default(0) // Ordem de exibição
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([taskId])
+  @@map("alerts")
 }
